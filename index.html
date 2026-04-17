@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Well Plate Assigner</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #dc2626;
+            --success: #16a34a;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-muted: #64748b;
+        }
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+        h1 { margin-bottom: 5px; }
+        .subtitle { color: var(--text-muted); margin-bottom: 20px; }
+        
+        /* Cards */
+        .card { 
+            background: var(--card-bg); 
+            border: 1px solid var(--border); 
+            border-radius: 12px; 
+            padding: 20px; 
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .card-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .card-header h2 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+        .card-header h2 .icon { font-size: 20px; }
+        
+        /* Form Elements */
+        .form-row { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 15px; 
+            margin-bottom: 12px;
+            align-items: flex-start;
+        }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { 
+            font-size: 13px; 
+            font-weight: 600; 
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .form-group input, .form-group select, .form-group textarea { 
+            padding: 8px 12px; 
+            border: 1px solid var(--border); 
+            border-radius: 6px; 
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { 
+            outline: none; 
+            border-color: var(--primary); 
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        }
+        .form-group input[type="number"] { width: 80px; }
+        .form-group input[type="text"] { width: 180px; }
+        .form-group textarea { width: 250px; height: 60px; resize: vertical; }
+        
+        /* Help tooltips */
+        .help-tip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            background: var(--text-muted);
+            color: white;
+            border-radius: 50%;
+            font-size: 10px;
+            cursor: help;
+            position: relative;
+        }
+        .help-tip:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--text);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: normal;
+            max-width: 250px;
+            white-space: normal;
+            z-index: 100;
+            margin-bottom: 5px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        /* Checkbox styling */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 22px;
+        }
+        .checkbox-group:hover { background: #e2e8f0; }
+        .checkbox-group input { width: 18px; height: 18px; cursor: pointer; }
+        .checkbox-group span { font-size: 14px; font-weight: 500; }
+        
+        /* Item lists */
+        .item-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+        .item-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .item-row input[type="text"] { flex: 1; min-width: 150px; }
+        .item-row .item-num { 
+            font-weight: 700; 
+            color: var(--text-muted); 
+            font-size: 12px;
+            min-width: 20px;
+        }
+        .remove-btn {
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 18px;
+        }
+        .remove-btn:hover { background: #fee2e2; }
+        
+        /* Buttons */
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-secondary { background: #e2e8f0; color: var(--text); }
+        .btn-secondary:hover { background: #cbd5e1; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #15803d; }
+        .btn-sm { padding: 6px 12px; font-size: 13px; }
+        
+        /* Capacity meter */
+        .capacity-bar {
+            background: #e2e8f0;
+            border-radius: 8px;
+            height: 24px;
+            overflow: hidden;
+            position: relative;
+            margin: 10px 0;
+        }
+        .capacity-fill {
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.3s, background 0.3s;
+        }
+        .capacity-fill.ok { background: var(--success); }
+        .capacity-fill.warning { background: var(--warning); }
+        .capacity-fill.danger { background: var(--danger); }
+        .capacity-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text);
+            text-shadow: 0px 0px 4px rgba(255,255,255,0.8);
+        }
+        
+        /* Summary box */
+        .summary-box {
+            background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 15px;
+        }
+        .summary-box .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+        }
+        .summary-item { text-align: center; }
+        .summary-item .num { font-size: 24px; font-weight: 700; color: var(--primary); }
+        .summary-item .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+        
+        /* Dilution sub-panel */
+        .sub-panel {
+            margin-top: 12px;
+            padding: 12px 16px;
+            background: #fefce8;
+            border: 1px solid #fef08a;
+            border-radius: 8px;
+        }
+        .sub-panel.hidden { display: none; }
+        
+        /* Plate table */
+        .plate-container { overflow-x: auto; }
+        table.plate { border-collapse: collapse; margin: 20px 0; max-width: 100%; }
+        table.plate th, table.plate td { 
+            border: 2px solid #334155; 
+            min-width: 52px; 
+            height: 52px; 
+            text-align: center; 
+            vertical-align: middle; 
+            font-size: 9px; 
+            font-weight: 600;
+            position: relative;
+            transition: transform 0.1s;
+        }
+        table.plate th { background: #f1f5f9; font-size: 13px; font-weight: 700; }
+        table.plate td.row-label { 
+            background: #f1f5f9; 
+            width: 35px; min-width: 35px;
+            font-size: 14px; 
+            font-weight: 700;
+        }
+        table.plate td.well {
+            background-blend-mode: overlay;
+        }
+        table.plate td.empty { background: #f8fafc; color: #cbd5e1; }
+        table.plate td.edge-skip { background: repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 4px, #e2e8f0 4px, #e2e8f0 8px); }
+        .well-id { 
+            position: absolute; 
+            bottom: 2px; 
+            right: 3px; 
+            font-size: 7px; 
+            opacity: 0.8;
+            background: rgba(255,255,255,0.7);
+            padding: 1px 3px;
+            border-radius: 3px;
+            pointer-events: none;
+        }
+
+        /* Drag and Drop Styles */
+        table.plate td[data-row] { cursor: grab; }
+        table.plate td[data-row]:active { cursor: grabbing; }
+        table.plate td.drag-over {
+            border: 3px solid var(--primary) !important;
+            opacity: 0.9;
+            transform: scale(1.05);
+            z-index: 10;
+        }
+        table.plate td.dragging { opacity: 0.4; }
+        
+        /* Legend */
+        .legend { margin-top: 20px; }
+        .legend h3 { margin-bottom: 10px; font-size: 16px; }
+        .legend-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
+            gap: 12px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border-radius: 6px;
+            font-size: 13px;
+            border: 1px solid var(--border);
+        }
+        .legend-swatch {
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            border: 1px solid #334155;
+            flex-shrink: 0;
+            background-blend-mode: overlay;
+        }
+        .legend-details { flex: 1; }
+        .legend-details .name { font-weight: 700; margin-bottom: 2px; }
+        .legend-details .info { font-size: 11px; color: var(--text-muted); }
+        
+        /* Action buttons */
+        .actions { 
+            display: flex; 
+            gap: 10px; 
+            flex-wrap: wrap;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+            margin-top: 15px;
+        }
+
+        .print-header { display: none; }
+        
+        /* Print styles */
+        @media print {
+            @page { size: A4 landscape; margin: 15mm; }
+            body { padding: 0; background: white; max-width: none; font-size: 10pt; margin: 0; }
+            #outputSection { 
+                display: block !important; 
+                padding: 5mm; 
+                box-sizing: border-box;
+            }
+            .card { box-shadow: none; border: none; padding: 0; margin-bottom: 10px; page-break-inside: avoid; }
+            .card-header { border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 10px; }
+            .no-print { display: none !important; }
+            h1 { font-size: 16pt; margin: 0; }
+            
+            .print-header { display: block !important; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px;}
+            .print-header h1 { font-size: 18pt; margin-bottom: 5px; }
+            .print-header p { margin: 2px 0; font-size: 11pt; }
+            
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            
+            table.plate { width: 100%; margin: 10px 0; }
+            table.plate th, table.plate td { 
+                border: 1pt solid #000 !important; 
+                height: 30px !important;
+                font-size: 7.5pt !important;
+                transform: none !important;
+            }
+            table.plate td.row-label { width: 8mm !important; font-size: 10pt !important; }
+            .well-id { font-size: 5pt !important; background: rgba(255,255,255,0.9) !important; }
+            
+            .legend-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+            .legend-item { border: 1pt solid #ccc; background: white; padding: 6px; page-break-inside: avoid; }
+            .legend-swatch { border: 1pt solid #000; }
+        }
+    </style>
+</head>
+<body>
+    <h1 class="no-print">Plate Assigner</h1>
+    <p class="subtitle no-print">Design your plate layout with separated controls and insert-shift drag tuning</p>
+
+    <div class="card no-print">
+        <div class="card-header">
+            <h2><span class="icon">📋</span> Experiment Info</h2>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Experiment ID</label>
+                <input type="text" id="expID" value="EXP-001" placeholder="e.g., EXP-001">
+            </div>
+            <div class="form-group">
+                <label>Date</label>
+                <input type="date" id="expDate">
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea id="expNotes" placeholder="Assay type, cell line, volumes..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="card no-print">
+        <div class="card-header">
+            <h2><span class="icon">🧬</span> Samples / Formulations</h2>
+            <button class="btn btn-primary btn-sm" onclick="addSample()">+ Add Sample</button>
+        </div>
+        <div id="sampleList" class="item-list"></div>
+        
+        <div class="form-row" style="margin-top: 15px;">
+            <div class="form-group">
+                <label>Replicates per sample</label>
+                <input type="number" id="sampleReplicates" value="3" min="1" max="24" onchange="updateCapacity()">
+            </div>
+            
+            <label class="checkbox-group">
+                <input type="checkbox" id="serialDilution" onchange="toggleDilution(); updateCapacity()">
+                <span>Enable Serial Dilutions</span>
+            </label>
+        </div>
+        
+        <div id="dilutionPanel" class="sub-panel hidden">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Dilution Steps</label>
+                    <input type="number" id="dilutionSteps" value="8" min="2" max="24" onchange="updateCapacity()">
+                </div>
+                <div class="form-group">
+                    <label>Dilution Factor</label>
+                    <input type="number" id="dilutionFactor" value="2" min="1.5" max="10" step="0.5">
+                </div>
+                <div class="form-group">
+                    <label>Starting Concentration</label>
+                    <input type="text" id="startConc" value="100" style="width: 100px;">
+                </div>
+                <div class="form-group">
+                    <label>Unit</label>
+                    <select id="concUnit">
+                        <option value="%">%</option>
+                        <option value="µM">µM</option>
+                        <option value="nM">nM</option>
+                        <option value="ng/mL">ng/mL</option>
+                        <option value="µg/mL">µg/mL</option>
+                    </select>
+                </div>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin: 10px 0 0 0;">
+                <strong>Preview:</strong> <span id="dilutionPreview">-</span>
+            </p>
+        </div>
+    </div>
+
+    <div class="card no-print">
+        <div class="card-header">
+            <h2><span class="icon">🎛️</span> Controls</h2>
+            <button class="btn btn-primary btn-sm" onclick="addControl()">+ Add Control</button>
+        </div>
+        <div id="controlList" class="item-list"></div>
+        
+        <div class="form-row" style="margin-top: 15px;">
+            <div class="form-group">
+                <label>Replicates per control</label>
+                <input type="number" id="controlReplicates" value="4" min="1" max="24" onchange="updateCapacity()">
+            </div>
+            <div class="form-group">
+                <label>Control Placement</label>
+                <select id="controlStrategy" style="width: 220px;" onchange="updateCapacity()">
+                    <option value="append-gap">Next to samples (With Gap)</option>
+                    <option value="append">Next to samples (Grouped)</option>
+                    <option value="end">End of plate</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="card no-print">
+        <div class="card-header">
+            <h2><span class="icon">⚙️</span> Layout Options</h2>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Plate Type</label>
+                <select id="plateType" style="width: 150px;" onchange="updateCapacity()">
+                    <option value="6">6-Well</option>
+                    <option value="12">12-Well</option>
+                    <option value="24">24-Well</option>
+                    <option value="48">48-Well</option>
+                    <option value="96" selected>96-Well</option>
+                    <option value="384">384-Well</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Fill Direction</label>
+                <select id="fillDirection" style="width: 160px;">
+                    <option value="row">Row-wise (→ then ↓)</option>
+                    <option value="column">Col-wise (↓ then →)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Sample Grouping</label>
+                <select id="grouping" style="width: 180px;">
+                    <option value="grouped">Grouped (together)</option>
+                    <option value="interspersed">Interspersed (spread)</option>
+                </select>
+            </div>
+
+            <label class="checkbox-group">
+                <input type="checkbox" id="edgeEffect" onchange="updateCapacity()">
+                <span>Avoid Edge Wells</span>
+            </label>
+        </div>
+    </div>
+
+    <div class="card no-print">
+        <div class="summary-box">
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="num" id="sumSamples">0</div>
+                    <div class="label">Samples</div>
+                </div>
+                <div class="summary-item">
+                    <div class="num" id="sumControls">0</div>
+                    <div class="label">Controls</div>
+                </div>
+                <div class="summary-item">
+                    <div class="num" id="sumWellsNeeded">0</div>
+                    <div class="label">Wells Needed</div>
+                </div>
+                <div class="summary-item">
+                    <div class="num" id="sumWellsAvail">96</div>
+                    <div class="label">Wells Available</div>
+                </div>
+            </div>
+        </div>
+        <div class="capacity-bar">
+            <div class="capacity-fill ok" id="capacityFill" style="width: 0%"></div>
+            <span class="capacity-text" id="capacityText">0 / 96 wells</span>
+        </div>
+        
+        <div class="actions">
+            <button class="btn btn-primary" onclick="generatePlate()" style="font-size: 16px; padding: 12px 24px;">
+                🔄 Generate Layout
+            </button>
+            <button class="btn btn-success" onclick="window.print()">
+                🖨️ Print A4 layout
+            </button>
+            <button class="btn btn-secondary" onclick="exportCSV()">
+                📥 Export CSV
+            </button>
+        </div>
+    </div>
+
+    <div id="outputSection" style="display: none;">
+        <div class="print-header">
+            <h1 id="printExpIDTitle">Experiment Layout</h1>
+            <p><strong>Date:</strong> <span id="printDate"></span></p>
+            <p><strong>Notes:</strong> <span id="printNotes" style="font-style: italic;"></span></p>
+        </div>
+        
+        <div class="card">
+            <div class="card-header no-print" style="flex-wrap: wrap;">
+                <h2><span class="icon">🔬</span> Plate Layout</h2>
+                <div style="display: flex; align-items: center; gap: 15px; font-size: 13px; font-weight: 600; background: #eff6ff; padding: 6px 12px; border-radius: 8px; border: 1px solid #bfdbfe;">
+                    <span title="Wells automatically shift into available space">💡 Drag & Drop Shift Mode:</span>
+                    <label style="cursor:pointer; display:flex; align-items:center; gap:4px;">
+                        <input type="radio" name="dragMode" value="individual" checked> Individual Wells
+                    </label>
+                    <label style="cursor:pointer; display:flex; align-items:center; gap:4px;">
+                        <input type="radio" name="dragMode" value="group"> Entire Groups
+                    </label>
+                </div>
+            </div>
+            <div class="plate-container">
+                <table class="plate" id="plateTable"></table>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="legend">
+                <h3>📑 Legend</h3>
+                <div class="legend-grid" id="legendGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize
+        document.getElementById('expDate').value = new Date().toISOString().split('T')[0];
+        
+        // Counters
+        let sampleCounter = 0;
+        let controlCounter = 0;
+        
+        // Solid base colors
+        const COLORS = [
+            '#bfdbfe', '#fecaca', '#bbf7d0', '#fde68a', '#e9d5ff', '#fbcfe8', '#ccfbf1', '#fed7aa',
+            '#c7d2fe', '#d9f99d', '#fecdd3', '#bae6fd', '#fef08a', '#e2e8f0'
+        ];
+
+        // Distinct CSS Hatches/Patterns for B&W Printing clarity
+        const PATTERNS = [
+            'none',
+            'repeating-linear-gradient(45deg, rgba(0,0,0,0.3) 0, rgba(0,0,0,0.3) 2px, transparent 2px, transparent 6px)',
+            'repeating-linear-gradient(-45deg, rgba(0,0,0,0.3) 0, rgba(0,0,0,0.3) 2px, transparent 2px, transparent 6px)',
+            'repeating-linear-gradient(90deg, rgba(0,0,0,0.3) 0, rgba(0,0,0,0.3) 2px, transparent 2px, transparent 6px)',
+            'repeating-linear-gradient(0deg, rgba(0,0,0,0.3) 0, rgba(0,0,0,0.3) 2px, transparent 2px, transparent 6px)',
+            'radial-gradient(circle, rgba(0,0,0,0.4) 2px, transparent 2px)',
+            'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.4) 3px, rgba(0,0,0,0.4) 6px)',
+            'repeating-linear-gradient(-45deg, transparent, transparent 3px, rgba(0,0,0,0.4) 3px, rgba(0,0,0,0.4) 6px)'
+        ];
+        
+        let plateData = [];
+        let legendData = [];
+        let draggedWell = null;
+
+        function getPlateConfig() {
+            const type = parseInt(document.getElementById('plateType').value);
+            const configs = {
+                6: { r: 2, c: 3 },
+                12: { r: 3, c: 4 },
+                24: { r: 4, c: 6 },
+                48: { r: 6, c: 8 },
+                96: { r: 8, c: 12 },
+                384: { r: 16, c: 24 }
+            };
+            return configs[type] || configs[96];
+        }
+        
+        function addSample(name = '') {
+            sampleCounter++;
+            const list = document.getElementById('sampleList');
+            const div = document.createElement('div');
+            div.className = 'item-row';
+            div.dataset.id = sampleCounter;
+            div.innerHTML = `
+                <span class="item-num">S${sampleCounter}</span>
+                <input type="text" class="sample-name" placeholder="Sample name (e.g., Form A)" value="${name}" onchange="updateCapacity()">
+                <button class="remove-btn" onclick="this.parentElement.remove(); updateCapacity()" title="Remove">×</button>
+            `;
+            list.appendChild(div);
+            updateCapacity();
+        }
+        
+        function addControl(name = '') {
+            controlCounter++;
+            const list = document.getElementById('controlList');
+            const div = document.createElement('div');
+            div.className = 'item-row';
+            div.dataset.id = controlCounter;
+            div.innerHTML = `
+                <span class="item-num">C${controlCounter}</span>
+                <input type="text" class="control-name" placeholder="Control name (e.g., Pos Control)" value="${name}" onchange="updateCapacity()">
+                <button class="remove-btn" onclick="this.parentElement.remove(); updateCapacity()" title="Remove">×</button>
+            `;
+            list.appendChild(div);
+            updateCapacity();
+        }
+        
+        function toggleDilution() {
+            const panel = document.getElementById('dilutionPanel');
+            const checked = document.getElementById('serialDilution').checked;
+            panel.classList.toggle('hidden', !checked);
+            updateDilutionPreview();
+        }
+        
+        function updateDilutionPreview() {
+            const steps = parseInt(document.getElementById('dilutionSteps').value) || 8;
+            const factor = parseFloat(document.getElementById('dilutionFactor').value) || 2;
+            const start = parseFloat(document.getElementById('startConc').value) || 100;
+            const unit = document.getElementById('concUnit').value;
+            
+            const concentrations = [];
+            for (let i = 0; i < Math.min(steps, 6); i++) {
+                concentrations.push((start / Math.pow(factor, i)).toPrecision(3));
+            }
+            if (steps > 6) concentrations.push('...');
+            
+            document.getElementById('dilutionPreview').textContent = 
+                concentrations.join(', ') + ' ' + unit;
+        }
+        
+        function updateCapacity() {
+            const config = getPlateConfig();
+            const totalWells = config.r * config.c;
+            
+            const sampleCount = document.querySelectorAll('#sampleList .item-row').length;
+            const controlCount = document.querySelectorAll('#controlList .item-row').length;
+            
+            const sampleReps = parseInt(document.getElementById('sampleReplicates').value) || 1;
+            const controlReps = parseInt(document.getElementById('controlReplicates').value) || 1;
+            const serialDil = document.getElementById('serialDilution').checked;
+            const dilSteps = serialDil ? (parseInt(document.getElementById('dilutionSteps').value) || 1) : 1;
+            const controlStrategy = document.getElementById('controlStrategy').value;
+            
+            const edgeEffect = document.getElementById('edgeEffect').checked;
+            let totalAvailable = totalWells;
+            if (edgeEffect && config.r >= 4 && config.c >= 4) {
+                totalAvailable = (config.r - 2) * (config.c - 2);
+            }
+            
+            const totalSampleWells = sampleCount * sampleReps * dilSteps;
+            const totalControlWells = controlCount * controlReps;
+            
+            let gapWells = 0;
+            if (controlStrategy === 'append-gap' && controlCount > 0) {
+                const sampleToControlGap = sampleCount > 0 ? 1 : 0;
+                gapWells = sampleToControlGap + Math.max(0, controlCount - 1);
+            }
+
+            const totalNeeded = totalSampleWells + totalControlWells + gapWells;
+            
+            document.getElementById('sumSamples').textContent = sampleCount;
+            document.getElementById('sumControls').textContent = controlCount;
+            document.getElementById('sumWellsNeeded').textContent = totalNeeded;
+            document.getElementById('sumWellsAvail').textContent = totalAvailable;
+            
+            const percentage = Math.min((totalNeeded / totalAvailable) * 100, 100) || 0;
+            const fill = document.getElementById('capacityFill');
+            const text = document.getElementById('capacityText');
+            
+            fill.style.width = percentage + '%';
+            fill.className = 'capacity-fill ' + (
+                totalNeeded > totalAvailable ? 'danger' : 
+                percentage > 85 ? 'warning' : 'ok'
+            );
+            text.textContent = `${totalNeeded} / ${totalAvailable} wells` + 
+                (totalNeeded > totalAvailable ? ' ⚠️ OVER' : '');
+            
+            updateDilutionPreview();
+        }
+        
+        function generatePlate() {
+            const config = getPlateConfig();
+            const samples = Array.from(document.querySelectorAll('#sampleList .sample-name')).map((inpt, i) => inpt.value.trim() || `Sample ${i+1}`);
+            const controls = Array.from(document.querySelectorAll('#controlList .control-name')).map((inpt, i) => inpt.value.trim() || `Control ${i+1}`);
+            
+            if (samples.length === 0 && controls.length === 0) {
+                alert('Add at least one sample or control.');
+                return;
+            }
+            
+            const sampleReps = parseInt(document.getElementById('sampleReplicates').value) || 1;
+            const controlReps = parseInt(document.getElementById('controlReplicates').value) || 1;
+            const serialDil = document.getElementById('serialDilution').checked;
+            const dilSteps = serialDil ? (parseInt(document.getElementById('dilutionSteps').value) || 1) : 1;
+            const dilFactor = parseFloat(document.getElementById('dilutionFactor').value) || 2;
+            const startConc = parseFloat(document.getElementById('startConc').value) || 100;
+            const concUnit = document.getElementById('concUnit').value;
+            const edgeEffect = document.getElementById('edgeEffect').checked;
+            const fillDir = document.getElementById('fillDirection').value;
+            const grouping = document.getElementById('grouping').value;
+            const controlStrategy = document.getElementById('controlStrategy').value;
+            
+            let positions = [];
+            if (fillDir === 'row') {
+                for (let r = 0; r < config.r; r++) {
+                    for (let c = 0; c < config.c; c++) {
+                        if (edgeEffect && config.r >= 4 && (r === 0 || r === config.r-1 || c === 0 || c === config.c-1)) continue;
+                        positions.push({ row: r, col: c });
+                    }
+                }
+            } else {
+                for (let c = 0; c < config.c; c++) {
+                    for (let r = 0; r < config.r; r++) {
+                        if (edgeEffect && config.r >= 4 && (r === 0 || r === config.r-1 || c === 0 || c === config.c-1)) continue;
+                        positions.push({ row: r, col: c });
+                    }
+                }
+            }
+            
+            let gapWells = 0;
+            if (controlStrategy === 'append-gap' && controls.length > 0) {
+                gapWells = (samples.length > 0 ? 1 : 0) + Math.max(0, controls.length - 1);
+            }
+
+            const totalNeeded = (samples.length * sampleReps * dilSteps) + (controls.length * controlReps) + gapWells;
+            if (totalNeeded > positions.length) {
+                alert(`Not enough wells! Need ${totalNeeded}, have ${positions.length}.`);
+                return;
+            }
+            
+            let sampleAssignments = [];
+            let controlAssignments = [];
+            let styleIndex = 0;
+            legendData = [];
+            
+            samples.forEach(sampleName => {
+                const color = COLORS[styleIndex % COLORS.length];
+                const pattern = PATTERNS[styleIndex % PATTERNS.length];
+                styleIndex++;
+                
+                let dilLabels = [];
+                for (let d = 0; d < dilSteps; d++) {
+                    const conc = serialDil ? (startConc / Math.pow(dilFactor, d)).toPrecision(3) : '';
+                    const label = serialDil ? `${sampleName}\n${conc}${concUnit}` : sampleName;
+                    const shortLabel = serialDil ? `${sampleName.substring(0,5)}\n${conc}` : (sampleName.length > 7 ? sampleName.substring(0, 6) + '…' : sampleName);
+                    if(serialDil) dilLabels.push(`${conc}${concUnit}`);
+                    
+                    for (let r = 0; r < sampleReps; r++) {
+                        sampleAssignments.push({
+                            label, shortLabel, type: 'sample', color, pattern, dilution: d, replicate: r, group: sampleName
+                        });
+                    }
+                }
+                legendData.push({
+                    name: sampleName, color, pattern, type: 'Sample',
+                    info: serialDil ? `${dilSteps} dil × ${sampleReps} reps` : `${sampleReps} reps`,
+                    concentrations: serialDil ? dilLabels.join(', ') : ''
+                });
+            });
+            
+            controls.forEach(ctrlName => {
+                const color = COLORS[styleIndex % COLORS.length];
+                const pattern = PATTERNS[styleIndex % PATTERNS.length];
+                styleIndex++;
+                
+                for (let r = 0; r < controlReps; r++) {
+                    controlAssignments.push({
+                        label: ctrlName, 
+                        shortLabel: ctrlName.length > 8 ? ctrlName.substring(0, 7) + '…' : ctrlName,
+                        type: 'control', color, pattern, replicate: r, group: ctrlName
+                    });
+                }
+                legendData.push({ name: ctrlName, color, pattern, type: 'Control', info: `${controlReps} reps`, concentrations: ''});
+            });
+            
+            if (grouping === 'interspersed') {
+                const reorder = (arr, reps, steps) => {
+                    let result = [];
+                    let maxCycle = reps * steps;
+                    for (let i = 0; i < maxCycle; i++) {
+                        arr.forEach(a => {
+                            let cycleIndex = (a.dilution !== undefined ? a.dilution * reps : 0) + a.replicate;
+                            if (cycleIndex === i) result.push(a);
+                        });
+                    }
+                    return result;
+                };
+                sampleAssignments = reorder(sampleAssignments, sampleReps, dilSteps);
+                controlAssignments = reorder(controlAssignments, controlReps, 1);
+            }
+            
+            plateData = Array(config.r).fill(null).map(() => Array(config.c).fill(null));
+            
+            let pIdx = 0;
+            let endPIdx = positions.length - 1;
+            
+            sampleAssignments.forEach(assignment => {
+                if(pIdx <= endPIdx) {
+                    const pos = positions[pIdx++];
+                    plateData[pos.row][pos.col] = assignment;
+                }
+            });
+
+            let currentControlGroup = null;
+            if (controlStrategy === 'end') {
+                for (let i = controlAssignments.length - 1; i >= 0; i--) {
+                    if (endPIdx >= pIdx) {
+                        const pos = positions[endPIdx--];
+                        plateData[pos.row][pos.col] = controlAssignments[i];
+                    }
+                }
+            } else {
+                if (controlStrategy === 'append-gap' && samples.length > 0 && controlAssignments.length > 0) pIdx++;
+                controlAssignments.forEach(assignment => {
+                    if (controlStrategy === 'append-gap') {
+                        if (currentControlGroup !== null && currentControlGroup !== assignment.group) pIdx++;
+                        currentControlGroup = assignment.group;
+                    }
+                    if (pIdx <= endPIdx) {
+                        const pos = positions[pIdx++];
+                        plateData[pos.row][pos.col] = assignment;
+                    }
+                });
+            }
+            
+            renderPlate(config, edgeEffect);
+            renderLegend();
+            
+            document.getElementById('printExpIDTitle').textContent = `Experiment: ${document.getElementById('expID').value}`;
+            document.getElementById('printDate').textContent = document.getElementById('expDate').value;
+            document.getElementById('printNotes').textContent = document.getElementById('expNotes').value;
+            
+            document.getElementById('outputSection').style.display = 'block';
+            document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function renderPlate(config, edgeEffect) {
+            const rowLabels = 'ABCDEFGHIJKLMNOP';
+            let html = '<thead><tr><th></th>';
+            for (let c = 1; c <= config.c; c++) html += `<th>${c}</th>`;
+            html += '</tr></thead><tbody>';
+            
+            for (let r = 0; r < config.r; r++) {
+                html += `<tr><td class="row-label">${rowLabels[r]}</td>`;
+                for (let c = 0; c < config.c; c++) {
+                    const wellId = `${rowLabels[r]}${c + 1}`;
+                    const isEdge = config.r >= 4 && (r === 0 || r === config.r-1 || c === 0 || c === config.c-1);
+                    const cell = plateData[r][c];
+                    
+                    let tdAttrs = `data-row="${r}" data-col="${c}" draggable="true"`;
+
+                    if (cell) {
+                        html += `<td class="well" ${tdAttrs} style="background-color: ${cell.color}; background-image: ${cell.pattern}; color: #000;" title="${cell.label.replace('\n', ' ')}">
+                            <span style="background: rgba(255,255,255,0.8); padding: 1px 3px; border-radius: 3px; font-weight: 700; pointer-events: none;">${cell.shortLabel.replace('\n', '<br>')}</span>
+                            <span class="well-id">${wellId}</span>
+                        </td>`;
+                    } else if (edgeEffect && isEdge) {
+                        html += `<td class="edge-skip" ${tdAttrs} title="Skipped (edge)"><span class="well-id">${wellId}</span></td>`;
+                    } else {
+                        html += `<td class="empty" ${tdAttrs} title="Empty"><span class="well-id">${wellId}</span></td>`;
+                    }
+                }
+                html += '</tr>';
+            }
+            html += '</tbody>';
+            document.getElementById('plateTable').innerHTML = html;
+        }
+
+        // --- Drag & Drop Shifting Logic ---
+        const plateTable = document.getElementById('plateTable');
+        
+        plateTable.addEventListener('dragstart', (e) => {
+            const td = e.target.closest('td[data-row]');
+            if (!td) return;
+            const r = parseInt(td.dataset.row);
+            const c = parseInt(td.dataset.col);
+            const cellData = plateData[r][c];
+
+            if (cellData !== null) {
+                const dragMode = document.querySelector('input[name="dragMode"]:checked').value;
+                draggedWell = { row: r, col: c, group: cellData.group };
+
+                if (dragMode === 'group') {
+                    for (let i = 0; i < plateData.length; i++) {
+                        for (let j = 0; j < plateData[0].length; j++) {
+                            if (plateData[i][j] && plateData[i][j].group === cellData.group) {
+                                const groupTd = plateTable.querySelector(`td[data-row="${i}"][data-col="${j}"]`);
+                                if (groupTd) groupTd.classList.add('dragging');
+                            }
+                        }
+                    }
+                } else {
+                    td.classList.add('dragging');
+                }
+                e.dataTransfer.effectAllowed = 'move';
+            } else {
+                e.preventDefault();
+            }
+        });
+
+        plateTable.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const td = e.target.closest('td[data-row]');
+            if (!td || !draggedWell) return;
+            
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            td.classList.add('drag-over');
+        });
+
+        plateTable.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const td = e.target.closest('td[data-row]');
+            if (!td || !draggedWell) return;
+            
+            const dropR = parseInt(td.dataset.row);
+            const dropC = parseInt(td.dataset.col);
+            
+            const dragMode = document.querySelector('input[name="dragMode"]:checked').value;
+            const config = getPlateConfig();
+            const fillDir = document.getElementById('fillDirection').value;
+
+            // 1. Build a 1D tape map of the entire plate
+            let map1D = [];
+            if (fillDir === 'row') {
+                for (let r = 0; r < config.r; r++) {
+                    for (let c = 0; c < config.c; c++) map1D.push({ r, c });
+                }
+            } else {
+                for (let c = 0; c < config.c; c++) {
+                    for (let r = 0; r < config.r; r++) map1D.push({ r, c });
+                }
+            }
+
+            let tape = map1D.map(p => plateData[p.r][p.c]);
+            let tIdx = map1D.findIndex(p => p.r === dropR && p.c === dropC);
+            let draggedItems = [];
+
+            // 2. Extract dragged items, leaving nulls in their original spots
+            if (dragMode === 'group') {
+                const group = draggedWell.group;
+                for (let i = 0; i < tape.length; i++) {
+                    if (tape[i] && tape[i].group === group) {
+                        draggedItems.push(tape[i]);
+                        tape[i] = null; 
+                    }
+                }
+            } else {
+                const sIdx = map1D.findIndex(p => p.r === draggedWell.row && p.c === draggedWell.col);
+                draggedItems.push(tape[sIdx]);
+                tape[sIdx] = null;
+            }
+
+            // 3. Insert items at the target index
+            tape.splice(tIdx, 0, ...draggedItems);
+
+            // 4. Absorb the shift by deleting the nearest available empty spaces (nulls)
+            let excess = draggedItems.length;
+            let scanIdx = tIdx + draggedItems.length; // Look to the right first
+
+            while (excess > 0 && scanIdx < tape.length) {
+                if (tape[scanIdx] === null) {
+                    tape.splice(scanIdx, 1);
+                    excess--;
+                } else {
+                    scanIdx++;
+                }
+            }
+
+            scanIdx = tIdx - 1; // Look to the left if still needed
+            while (excess > 0 && scanIdx >= 0) {
+                if (tape[scanIdx] === null) {
+                    tape.splice(scanIdx, 1);
+                    excess--;
+                } else {
+                    scanIdx--;
+                }
+            }
+
+            // 5. Apply the shifted 1D tape back to the 2D Plate Array
+            map1D.forEach((p, i) => {
+                plateData[p.r][p.c] = i < tape.length ? tape[i] : null;
+            });
+
+            // Re-render
+            const edgeEffect = document.getElementById('edgeEffect').checked;
+            renderPlate(config, edgeEffect);
+
+            // Cleanup
+            document.querySelectorAll('.drag-over, .dragging').forEach(el => {
+                el.classList.remove('drag-over', 'dragging');
+            });
+            draggedWell = null;
+        });
+
+        plateTable.addEventListener('dragend', (e) => {
+            document.querySelectorAll('.drag-over, .dragging').forEach(el => {
+                el.classList.remove('drag-over', 'dragging');
+            });
+            draggedWell = null;
+        });
+        
+        function renderLegend() {
+            let html = '';
+            legendData.forEach(item => {
+                html += `
+                    <div class="legend-item">
+                        <div class="legend-swatch" style="background-color: ${item.color}; background-image: ${item.pattern};"></div>
+                        <div class="legend-details">
+                            <div class="name">${item.name}</div>
+                            <div class="info">${item.type} • ${item.info}</div>
+                            ${item.concentrations ? `<div class="info" style="margin-top:2px;"><strong>Concs:</strong> ${item.concentrations}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('legendGrid').innerHTML = html;
+        }
+        
+        function exportCSV() {
+            if (!plateData.length) return alert('Generate a layout first!');
+            const rowLabels = 'ABCDEFGHIJKLMNOP';
+            const config = getPlateConfig();
+            
+            let csv = 'Well,Row,Column,Sample,Type\n';
+            for (let r = 0; r < config.r; r++) {
+                for (let c = 0; c < config.c; c++) {
+                    const wellId = `${rowLabels[r]}${c + 1}`;
+                    const cell = plateData[r][c];
+                    if (cell) {
+                        csv += `${wellId},${rowLabels[r]},${c + 1},"${cell.label.replace('\n', ' ')}",${cell.type}\n`;
+                    } else {
+                        csv += `${wellId},${rowLabels[r]},${c + 1},Empty,empty\n`;
+                    }
+                }
+            }
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${document.getElementById('expID').value || 'plate'}_layout.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Trigger initial capacity calc
+        updateCapacity();
+    </script>
+</body>
+</html>
